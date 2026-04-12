@@ -3,6 +3,33 @@ local RomajiProcessor = require "luamigemo.romaji_processor"
 local TernaryRegexGenerator = require "luamigemo.ternary_regex_generator"
 local cc = require "luamigemo.character_converter"
 
+--- Resolve the path to the bundled dictionary file.
+--- Uses debug.getinfo to find the plugin root, independent of vim.* APIs.
+--- @return string|nil
+local function resolve_bundled_dict()
+  local source = debug.getinfo(1, "S").source
+  if source:sub(1, 1) ~= "@" then
+    return nil
+  end
+  -- this_file: /path/to/luamigemo/lua/luamigemo/init.lua
+  local dir = source:sub(2)
+  for _ = 1, 3 do
+    dir = dir:match "^(.*)[/\\][^/\\]+$"
+    if not dir then
+      return nil
+    end
+  end
+  local dict_path = dir .. "/dict/migemo-compact-dict"
+  local f = io.open(dict_path, "rb")
+  if f then
+    f:close()
+    return dict_path
+  end
+  return nil
+end
+
+local _bundled_dict_path = resolve_bundled_dict()
+
 local M = {}
 
 --- rxop format: {or, beginGroup, endGroup, beginClass, endClass, newline, escape}
@@ -121,9 +148,12 @@ local _instance = nil
 local _dict_path = nil
 
 --- Get or create the singleton Migemo instance.
---- @param dict_path string|nil Path to migemo-compact-dict. Uses cached instance if path matches.
+--- @param dict_path string|nil Path to migemo-compact-dict. nil uses bundled dict.
 --- @return table Migemo instance
 function M.get(dict_path)
+  if dict_path == nil then
+    dict_path = _bundled_dict_path
+  end
   if _instance and _dict_path == dict_path then
     return _instance
   end
@@ -137,7 +167,7 @@ function M.get(dict_path)
 end
 
 --- Query with a specific rxop.
---- @param dict_path string Path to migemo-compact-dict
+--- @param dict_path string|nil Path to migemo-compact-dict. nil uses bundled dict.
 --- @param word string Input romaji
 --- @param rxop table rxop tuple (e.g. M.RXOP_VIM or M.RXOP_PCRE)
 --- @return string regex pattern
@@ -145,6 +175,18 @@ function M.query(dict_path, word, rxop)
   local migemo = M.get(dict_path)
   migemo:set_rxop(rxop)
   return migemo:query(word)
+end
+
+--- Return the path to the bundled dictionary, or nil if not found.
+--- @return string|nil
+function M.bundled_dict_path()
+  return _bundled_dict_path
+end
+
+--- Return the currently active dictionary path, or nil if none loaded.
+--- @return string|nil
+function M.active_dict_path()
+  return _dict_path
 end
 
 return M
