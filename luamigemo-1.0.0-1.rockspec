@@ -1,3 +1,4 @@
+rockspec_format = "3.0"
 package = "luamigemo"
 version = "1.0.0-1"
 source = {
