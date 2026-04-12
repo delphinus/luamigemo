@@ -85,7 +85,7 @@ Neovim で `:checkhealth luamigemo` を実行すると、辞書と LuaJIT 環境
 ### Neovim プラグイン依存として (lazy.nvim)
 
 ```lua
-{ "delphinus/luamigemo" }
+{ "delphinus/luamigemo", version = "*" }
 ```
 
 ### LuaRocks

@@ -87,7 +87,7 @@ LuaJIT environment.
 ### As a Neovim plugin dependency (lazy.nvim)
 
 ```lua
-{ "delphinus/luamigemo" }
+{ "delphinus/luamigemo", version = "*" }
 ```
 
 ### LuaRocks
