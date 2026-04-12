@@ -19,14 +19,13 @@ jobs:
         with:
           luarocksVersion: "3.13.0"
 
-      - name: Generate rockspec
-        run: |
-          TAG="${GITHUB_REF#refs/tags/v}"
-          sed "s/1.0.0/${TAG}/g" luamigemo-1.0.0-1.rockspec > "luamigemo-${TAG}-1.rockspec"
-
-      - name: Upload to LuaRocks
+      - name: Generate rockspec and upload
         env:
           LUAROCKS_API_KEY: ${{ secrets.LUAROCKS_API_KEY }}
         run: |
           TAG="${GITHUB_REF#refs/tags/v}"
-          luarocks upload "luamigemo-${TAG}-1.rockspec" --api-key="$LUAROCKS_API_KEY"
+          ROCKSPEC="luamigemo-${TAG}-1.rockspec"
+          if [ "$ROCKSPEC" != "luamigemo-1.0.0-1.rockspec" ]; then
+            sed "s/1.0.0/${TAG}/g" luamigemo-1.0.0-1.rockspec > "$ROCKSPEC"
+          fi
+          luarocks upload "$ROCKSPEC" --api-key="$LUAROCKS_API_KEY"
