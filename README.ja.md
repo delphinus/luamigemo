@@ -26,15 +26,13 @@ local pattern = migemo.query("kensaku")
 
 ### 正規表現方言・辞書のカスタマイズ
 
-`migemo.get()` でインスタンスを作成すると細かく制御できます:
+`query()` に rxop テーブルを渡すことで正規表現方言を変更できます:
 
 ```lua
 local migemo = require "luamigemo"
 
 -- Vim 正規表現方言を使う場合
-local m = migemo.get()
-m:set_rxop(migemo.RXOP_VIM)
-local pattern = m:query("tokyo")
+local pattern = migemo.query("tokyo", migemo.RXOP_VIM)
 ```
 
 ### カスタム辞書
@@ -46,7 +44,6 @@ local migemo = require "luamigemo"
 
 -- カスタム辞書を使用 (例: migemo-compact-dict-latest の GPL 辞書)
 local m = migemo.get("/path/to/migemo-compact-dict")
-m:set_rxop(migemo.RXOP_PCRE)
 local pattern = m:query("kensaku")
 ```
 

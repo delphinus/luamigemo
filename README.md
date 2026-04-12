@@ -28,15 +28,13 @@ local pattern = migemo.query("kensaku")
 
 ### Customizing regex dialect or dictionary
 
-Create a Migemo instance via `migemo.get()` for full control:
+Pass an rxop table to `query()` to change the regex dialect:
 
 ```lua
 local migemo = require "luamigemo"
 
 -- Use Vim regex dialect
-local m = migemo.get()
-m:set_rxop(migemo.RXOP_VIM)
-local pattern = m:query("tokyo")
+local pattern = migemo.query("tokyo", migemo.RXOP_VIM)
 ```
 
 ### Custom dictionary
@@ -48,7 +46,6 @@ local migemo = require "luamigemo"
 
 -- Use a custom dict (e.g., the larger GPL dict from migemo-compact-dict-latest)
 local m = migemo.get("/path/to/migemo-compact-dict")
-m:set_rxop(migemo.RXOP_PCRE)
 local pattern = m:query("kensaku")
 ```
 

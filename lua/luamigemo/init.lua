@@ -43,7 +43,6 @@ Migemo.__index = Migemo
 function Migemo.new()
   local self = setmetatable({}, Migemo)
   self.dict = nil
-  self.rxop = nil
   self.processor = RomajiProcessor.build()
   return self
 end
@@ -52,12 +51,10 @@ function Migemo:set_dict(dict)
   self.dict = dict
 end
 
-function Migemo:set_rxop(rxop)
-  self.rxop = rxop
-end
-
-function Migemo:query_a_word(word)
-  local generator = TernaryRegexGenerator.new(self.rxop or M.RXOP_PCRE)
+--- @param word string
+--- @param rxop table|nil rxop format table. Defaults to M.RXOP_PCRE.
+function Migemo:query_a_word(word, rxop)
+  local generator = TernaryRegexGenerator.new(rxop or M.RXOP_PCRE)
   generator:add(word)
 
   local lower = word:lower()
@@ -87,14 +84,16 @@ function Migemo:query_a_word(word)
   return generator:generate()
 end
 
-function Migemo:query(word)
+--- @param word string
+--- @param rxop table|nil rxop format table. Defaults to M.RXOP_PCRE.
+function Migemo:query(word, rxop)
   if word == "" then
     return ""
   end
   local words = Migemo.parse_query(word)
   local parts = {}
   for _, w in ipairs(words) do
-    parts[#parts + 1] = self:query_a_word(w)
+    parts[#parts + 1] = self:query_a_word(w, rxop)
   end
   return table.concat(parts)
 end
@@ -168,10 +167,11 @@ end
 
 --- Query using the default singleton instance.
 --- @param word string Input romaji
+--- @param rxop table|nil rxop format table. Defaults to M.RXOP_PCRE.
 --- @return string regex pattern
-function M.query(word)
+function M.query(word, rxop)
   local migemo = M.get()
-  return migemo:query(word)
+  return migemo:query(word, rxop)
 end
 
 --- Return the path to the bundled dictionary, or nil if not found.
