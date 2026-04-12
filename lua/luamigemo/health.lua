@@ -22,7 +22,7 @@ function M.check()
       vim.health.warn("Bundled dict path resolved but file not readable: " .. bundled)
     end
   else
-    vim.health.warn "Bundled dict not found. Provide an explicit dict_path to M.get() or M.query()."
+    vim.health.warn "Bundled dict not found. Provide an explicit dict_path to M.get()."
   end
 
   local active = luamigemo.active_dict_path()

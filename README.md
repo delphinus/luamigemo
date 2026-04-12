@@ -21,34 +21,35 @@ A migemo compact dictionary is bundled, so no additional setup is needed.
 ```lua
 local migemo = require "luamigemo"
 
--- Uses the bundled dictionary automatically
-local pattern = migemo.query(nil, "kensaku", migemo.RXOP_PCRE)
+-- Uses the bundled dictionary and PCRE regex by default
+local pattern = migemo.query("kensaku")
 -- => PCRE regex matching 検索, けんさく, ケンサク, etc.
-
--- Use Vim regex dialect instead
-local vim_pattern = migemo.query(nil, "kensaku", migemo.RXOP_VIM)
 ```
 
-### Lower-level API
+### Customizing regex dialect or dictionary
+
+Create a Migemo instance via `migemo.get()` for full control:
 
 ```lua
 local migemo = require "luamigemo"
 
--- Create and configure a Migemo instance manually
-local m = migemo.get() -- uses bundled dict
-m:set_rxop(migemo.RXOP_PCRE)
+-- Use Vim regex dialect
+local m = migemo.get()
+m:set_rxop(migemo.RXOP_VIM)
 local pattern = m:query("tokyo")
 ```
 
 ### Custom dictionary
 
-You can use a different dictionary by passing an explicit path:
+You can use a different dictionary by passing a path to `migemo.get()`:
 
 ```lua
 local migemo = require "luamigemo"
 
 -- Use a custom dict (e.g., the larger GPL dict from migemo-compact-dict-latest)
-local pattern = migemo.query("/path/to/migemo-compact-dict", "kensaku", migemo.RXOP_PCRE)
+local m = migemo.get("/path/to/migemo-compact-dict")
+m:set_rxop(migemo.RXOP_PCRE)
+local pattern = m:query("kensaku")
 ```
 
 The larger GPL-licensed dictionary is available from

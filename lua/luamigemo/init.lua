@@ -166,14 +166,11 @@ function M.get(dict_path)
   return migemo
 end
 
---- Query with a specific rxop.
---- @param dict_path string|nil Path to migemo-compact-dict. nil uses bundled dict.
+--- Query using the default singleton instance.
 --- @param word string Input romaji
---- @param rxop table rxop tuple (e.g. M.RXOP_VIM or M.RXOP_PCRE)
 --- @return string regex pattern
-function M.query(dict_path, word, rxop)
-  local migemo = M.get(dict_path)
-  migemo:set_rxop(rxop)
+function M.query(word)
+  local migemo = M.get()
   return migemo:query(word)
 end
 
