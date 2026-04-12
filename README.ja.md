@@ -87,6 +87,12 @@ Neovim で `:checkhealth luamigemo` を実行すると、辞書と LuaJIT 環境
 { "delphinus/luamigemo" }
 ```
 
+### LuaRocks
+
+```bash
+luarocks install luamigemo
+```
+
 ### 手動
 
 リポジトリをクローンし、`lua/` を `package.path` に追加してください:
@@ -106,6 +112,16 @@ jsmigemo によってコンパイルされたものです。BSD 3-Clause License
 提供されています (詳細は `dict/LICENSE` を参照)。
 
 [yet-another-migemo-dict]: https://github.com/oguna/yet-another-migemo-dict
+
+## リリース
+
+`v*` にマッチするタグをプッシュすると、GitHub Actions ワークフローが
+自動的にパッケージを [LuaRocks](https://luarocks.org/) に公開します。
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
 
 ## ライセンス
 

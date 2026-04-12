@@ -1,0 +1,34 @@
+name: LuaRocks release
+on:
+  push:
+    tags:
+      - "v*"
+  pull_request:
+
+jobs:
+  luarocks-release:
+    runs-on: ubuntu-latest
+    name: LuaRocks upload
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: LuaRocks Upload
+        uses: nvim-neorocks/luarocks-tag-release@v7
+        env:
+          LUAROCKS_API_KEY: ${{ secrets.LUAROCKS_API_KEY }}
+        with:
+          summary: "Pure Lua migemo engine for LuaJIT — romaji to regex converter for Japanese text search"
+          detailed_description: |
+            A pure Lua implementation of migemo, ported from jsmigemo.
+            Converts romaji input into regex patterns that match hiragana,
+            katakana, and kanji — enabling Japanese incremental search
+            without switching input methods.
+          dependencies: |
+            luajit >= 2.0
+          labels: |
+            neovim
+            migemo
+            japanese
+            luajit
+          copy_directories: |
+            dict

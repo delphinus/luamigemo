@@ -89,6 +89,12 @@ LuaJIT environment.
 { "delphinus/luamigemo" }
 ```
 
+### LuaRocks
+
+```bash
+luarocks install luamigemo
+```
+
 ### Manual
 
 Clone this repository and add `lua/` to your `package.path`:
@@ -108,6 +114,16 @@ The bundled dictionary (`dict/migemo-compact-dict`) is compiled from
 BSD 3-Clause License (see `dict/LICENSE`).
 
 [yet-another-migemo-dict]: https://github.com/oguna/yet-another-migemo-dict
+
+## Release
+
+Pushing a tag matching `v*` triggers a GitHub Actions workflow that
+automatically publishes the package to [LuaRocks](https://luarocks.org/).
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
 
 ## License
 
