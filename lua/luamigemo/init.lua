@@ -55,15 +55,19 @@ end
 
 --- @param word string
 --- @param rxop table|nil rxop format table. Defaults to M.RXOP_PCRE.
-function Migemo:query_a_word(word, rxop)
+--- @param use_dict boolean|nil Whether to use dictionary lookup. Defaults to true.
+function Migemo:query_a_word(word, rxop, use_dict)
   rxop = rxop or M.RXOP_PCRE
+  if use_dict == nil then
+    use_dict = true
+  end
   local cache_for_rxop = self._query_cache[rxop]
-  if cache_for_rxop then
+  if cache_for_rxop and use_dict then
     local cached = cache_for_rxop[word]
     if cached then
       return cached
     end
-  else
+  elseif not cache_for_rxop then
     cache_for_rxop = {}
     self._query_cache[rxop] = cache_for_rxop
   end
@@ -72,7 +76,7 @@ function Migemo:query_a_word(word, rxop)
   generator:add(word)
 
   local lower = word:lower()
-  if self.dict then
+  if use_dict and self.dict then
     local results = self.dict:predictive_search_results(lower)
     for _, w in ipairs(results) do
       generator:add(w)
@@ -86,7 +90,7 @@ function Migemo:query_a_word(word, rxop)
   for _, suffix in ipairs(result.suffixes) do
     local hira = result.prefix .. suffix
     generator:add(hira)
-    if self.dict then
+    if use_dict and self.dict then
       local hira_results = self.dict:predictive_search_results(hira)
       for _, w in ipairs(hira_results) do
         generator:add(w)
@@ -98,20 +102,23 @@ function Migemo:query_a_word(word, rxop)
   end
 
   local pattern = generator:generate()
-  cache_for_rxop[word] = pattern
+  if use_dict then
+    cache_for_rxop[word] = pattern
+  end
   return pattern
 end
 
 --- @param word string
 --- @param rxop table|nil rxop format table. Defaults to M.RXOP_PCRE.
-function Migemo:query(word, rxop)
+--- @param use_dict boolean|nil Whether to use dictionary lookup. Defaults to true.
+function Migemo:query(word, rxop, use_dict)
   if word == "" then
     return ""
   end
   local words = Migemo.parse_query(word)
   local parts = {}
   for _, w in ipairs(words) do
-    parts[#parts + 1] = self:query_a_word(w, rxop)
+    parts[#parts + 1] = self:query_a_word(w, rxop, use_dict)
   end
   return table.concat(parts)
 end
@@ -186,10 +193,11 @@ end
 --- Query using the default singleton instance.
 --- @param word string Input romaji
 --- @param rxop table|nil rxop format table. Defaults to M.RXOP_PCRE.
+--- @param use_dict boolean|nil Whether to use dictionary lookup. Defaults to true.
 --- @return string regex pattern
-function M.query(word, rxop)
+function M.query(word, rxop, use_dict)
   local migemo = M.get()
-  return migemo:query(word, rxop)
+  return migemo:query(word, rxop, use_dict)
 end
 
 --- Return the path to the bundled dictionary, or nil if not found.
