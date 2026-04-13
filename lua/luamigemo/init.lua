@@ -44,6 +44,8 @@ function Migemo.new()
   local self = setmetatable({}, Migemo)
   self.dict = nil
   self.processor = RomajiProcessor.build()
+  -- Query result cache: rxop table → { word → pattern string }
+  self._query_cache = {}
   return self
 end
 
@@ -54,7 +56,19 @@ end
 --- @param word string
 --- @param rxop table|nil rxop format table. Defaults to M.RXOP_PCRE.
 function Migemo:query_a_word(word, rxop)
-  local generator = TernaryRegexGenerator.new(rxop or M.RXOP_PCRE)
+  rxop = rxop or M.RXOP_PCRE
+  local cache_for_rxop = self._query_cache[rxop]
+  if cache_for_rxop then
+    local cached = cache_for_rxop[word]
+    if cached then
+      return cached
+    end
+  else
+    cache_for_rxop = {}
+    self._query_cache[rxop] = cache_for_rxop
+  end
+
+  local generator = TernaryRegexGenerator.new(rxop)
   generator:add(word)
 
   local lower = word:lower()
@@ -83,7 +97,9 @@ function Migemo:query_a_word(word, rxop)
     generator:add(cc.zen2han(kata))
   end
 
-  return generator:generate()
+  local pattern = generator:generate()
+  cache_for_rxop[word] = pattern
+  return pattern
 end
 
 --- @param word string
