@@ -472,16 +472,10 @@ function RomajiProcessor:romaji_to_hiragana_predictively(romaji)
       local set = {}
       for i = lower, upper - 1 do
         local re = self.entries[i]
-        if re.remain > 0 then
-          local set2 = self:find_predictively(romaji, end_pos - 1 - re.remain)
-          for _, re2 in ipairs(set2) do
-            if re2.remain == 0 then
-              set[re.hiragana .. re2.hiragana] = true
-            end
-          end
-        else
-          set[re.hiragana] = true
-        end
+        -- Add hiragana as-is, without recursively expanding remain > 0 entries.
+        -- e.g., "tt"→っ is added as standalone っ, not expanded to った/っち/etc.
+        -- This matches jsmigemo's output behavior.
+        set[re.hiragana] = true
       end
       local list = {}
       for k in pairs(set) do
