@@ -58,48 +58,71 @@ local function split(t)
   return t
 end
 
-local function insert_node(x, t)
-  if t == nil then
+-- Pre-allocated buffers for iterative insert (avoids per-call table allocation).
+-- Max AA-tree depth is O(log n); 32 is more than enough.
+local _insert_path = {}
+local _insert_dirs = {} -- 1 = left, 2 = right
+
+--- Iterative AA-tree insertion. Avoids recursive calls that prevent LuaJIT JIT compilation.
+local function insert_node(x, root)
+  if root == nil then
     local r = { value = x, child = nil, left = nil, right = nil, level = 1 }
     return r, r, true
   end
-  local r, inserted
-  if x < t.value then
-    t.left, r, inserted = insert_node(x, t.left)
-  elseif x > t.value then
-    t.right, r, inserted = insert_node(x, t.right)
-  else
-    return t, t, false
-  end
-  t = skew(t)
-  t = split(t)
-  return t, r, inserted
-end
 
-local function add_to_tree(node, codepoints, offset)
-  if offset <= #codepoints then
-    local new_node, target, inserted = insert_node(codepoints[offset], node)
-    if inserted or target.child ~= nil then
-      target.child = add_to_tree(target.child, codepoints, offset + 1)
+  -- Phase 1: descend to find insertion point
+  local path = _insert_path
+  local dirs = _insert_dirs
+  local n = 0
+  local t = root
+
+  while true do
+    if x == t.value then
+      return root, t, false
     end
-    return new_node
-  else
-    return nil
+    n = n + 1
+    path[n] = t
+    if x < t.value then
+      dirs[n] = 1
+      if t.left == nil then
+        break
+      end
+      t = t.left
+    else
+      dirs[n] = 2
+      if t.right == nil then
+        break
+      end
+      t = t.right
+    end
   end
-end
 
---- Insert a word directly from a UTF-8 string, decoding inline.
---- Avoids creating intermediate codepoint table + closure per call.
-local function add_to_tree_str(node, s, byte_pos)
-  local cp, next_pos = utils.decode_utf8_at(s, byte_pos)
-  if cp == nil then
-    return nil
+  -- Phase 2: attach new node
+  local new_node = { value = x, child = nil, left = nil, right = nil, level = 1 }
+  if dirs[n] == 1 then
+    path[n].left = new_node
+  else
+    path[n].right = new_node
   end
-  local new_node, target, inserted = insert_node(cp, node)
-  if inserted or target.child ~= nil then
-    target.child = add_to_tree_str(target.child, s, next_pos)
+
+  -- Phase 3: walk back up, applying skew and split
+  for i = n, 1, -1 do
+    t = path[i]
+    t = skew(t)
+    t = split(t)
+    if i > 1 then
+      if dirs[i - 1] == 1 then
+        path[i - 1].left = t
+      else
+        path[i - 1].right = t
+      end
+    else
+      root = t
+    end
+    path[i] = nil -- clear for GC
   end
-  return new_node
+
+  return root, new_node, true
 end
 
 local function traverse_siblings(node, results)
@@ -110,12 +133,50 @@ local function traverse_siblings(node, results)
   end
 end
 
---- Add a word to the generator.
+--- Add a word to the generator (iterative).
 function TernaryRegexGenerator:add(word)
   if #word == 0 then
     return
   end
-  self.root = add_to_tree_str(self.root, word, 1)
+
+  local pos = 1
+  local node = self.root
+  local prev_target = nil
+  local is_root = true
+
+  while pos <= #word do
+    local cp, next_pos = utils.decode_utf8_at(word, pos)
+    if cp == nil then
+      break
+    end
+
+    local new_node, target, inserted = insert_node(cp, node)
+
+    -- Connect this level's (possibly rebalanced) tree root to the parent
+    if is_root then
+      self.root = new_node
+      is_root = false
+    else
+      prev_target.child = new_node
+    end
+
+    if next_pos > #word then
+      -- Last codepoint: set child to nil (shorter prefix subsumes longer)
+      if inserted or target.child ~= nil then
+        target.child = nil
+      end
+      break
+    end
+
+    -- More codepoints: descend into child subtree
+    if not (inserted or target.child ~= nil) then
+      break -- existing leaf, shorter prefix already covers this word
+    end
+
+    prev_target = target
+    node = target.child
+    pos = next_pos
+  end
 end
 
 function TernaryRegexGenerator:_escape_char(value)

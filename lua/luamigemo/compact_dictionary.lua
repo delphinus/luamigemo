@@ -63,6 +63,8 @@ function CompactDictionary.new(data)
   self.value_trie:build_parent_cache()
   -- Lazy cache: key_trie node index → list of value strings (or false if no mapping)
   self._mapping_cache = {}
+  -- Lazy cache: search key string → flat result list
+  self._search_cache = {}
   return self
 end
 
@@ -187,6 +189,22 @@ function CompactDictionary:predictive_search_each(key, callback)
       -- cached == false: no mapping for this node, skip
     end)
   end
+end
+
+--- Cached predictive search: returns flat result table.
+--- First call computes via predictive_search_each and caches.
+--- Subsequent calls return the cached table directly (no BFS, no callbacks).
+function CompactDictionary:predictive_search_results(key)
+  local cached = self._search_cache[key]
+  if cached then
+    return cached
+  end
+  local results = {}
+  self:predictive_search_each(key, function(w)
+    results[#results + 1] = w
+  end)
+  self._search_cache[key] = results
+  return results
 end
 
 return CompactDictionary
