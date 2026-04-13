@@ -29,6 +29,16 @@ function LOUDSTrie:parent(x)
   return p
 end
 
+--- Pre-compute parent for all nodes. Eliminates lazy cache misses at query time.
+--- Call this once at dictionary load time for tries used in reverse_lookup.
+function LOUDSTrie:build_parent_cache()
+  local bv = self.bit_vector
+  local cache = self._parent_cache
+  for i = 2, self.edges_len - 1 do
+    cache[i] = bv:rank(bv:select(i, true), false)
+  end
+end
+
 function LOUDSTrie:first_child(x)
   local y = self.bit_vector:select(x, false) + 1
   if self.bit_vector:get(y) then

@@ -58,6 +58,9 @@ function CompactDictionary.new(data)
   end
 
   self.has_mapping = CompactDictionary._create_has_mapping(self.mapping_bv)
+  -- Pre-build parent cache for value_trie (used in reverse_lookup).
+  -- Shifts ~20ms from first query to dictionary load time.
+  self.value_trie:build_parent_cache()
   -- Lazy cache: key_trie node index → list of value strings (or false if no mapping)
   self._mapping_cache = {}
   return self
