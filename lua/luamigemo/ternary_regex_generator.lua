@@ -88,6 +88,20 @@ local function add_to_tree(node, codepoints, offset)
   end
 end
 
+--- Insert a word directly from a UTF-8 string, decoding inline.
+--- Avoids creating intermediate codepoint table + closure per call.
+local function add_to_tree_str(node, s, byte_pos)
+  local cp, next_pos = utils.decode_utf8_at(s, byte_pos)
+  if cp == nil then
+    return nil
+  end
+  local new_node, target, inserted = insert_node(cp, node)
+  if inserted or target.child ~= nil then
+    target.child = add_to_tree_str(target.child, s, next_pos)
+  end
+  return new_node
+end
+
 local function traverse_siblings(node, results)
   if node ~= nil then
     traverse_siblings(node.left, results)
@@ -101,8 +115,7 @@ function TernaryRegexGenerator:add(word)
   if #word == 0 then
     return
   end
-  local cps = utils.to_codepoints(word)
-  self.root = add_to_tree(self.root, cps, 1)
+  self.root = add_to_tree_str(self.root, word, 1)
 end
 
 function TernaryRegexGenerator:_escape_char(value)

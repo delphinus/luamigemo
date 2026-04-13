@@ -59,9 +59,9 @@ function Migemo:query_a_word(word, rxop)
 
   local lower = word:lower()
   if self.dict then
-    for w in self.dict:predictive_search(lower) do
+    self.dict:predictive_search_each(lower, function(w)
       generator:add(w)
-    end
+    end)
   end
 
   generator:add(cc.han2zen(word))
@@ -72,9 +72,9 @@ function Migemo:query_a_word(word, rxop)
     local hira = result.prefix .. suffix
     generator:add(hira)
     if self.dict then
-      for w in self.dict:predictive_search(hira) do
+      self.dict:predictive_search_each(hira, function(w)
         generator:add(w)
-      end
+      end)
     end
     local kata = cc.hira2kata(hira)
     generator:add(kata)

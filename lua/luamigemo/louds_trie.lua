@@ -1,3 +1,4 @@
+local ffi = require "ffi"
 local utils = require "luamigemo.utils"
 
 local LOUDSTrie = {}
@@ -11,11 +12,21 @@ function LOUDSTrie.new(bit_vector, edges, edges_len)
   self.bit_vector = bit_vector
   self.edges = edges
   self.edges_len = edges_len
+  -- Lazy parent cache: FFI array, 0 = not cached (valid parents are >= 1)
+  self._parent_cache = ffi.new("int32_t[?]", edges_len)
+  -- Lazy reverse_lookup cache
+  self._reverse_cache = {}
   return self
 end
 
 function LOUDSTrie:parent(x)
-  return self.bit_vector:rank(self.bit_vector:select(x, true), false)
+  local p = self._parent_cache[x]
+  if p ~= 0 then
+    return p
+  end
+  p = self.bit_vector:rank(self.bit_vector:select(x, true), false)
+  self._parent_cache[x] = p
+  return p
 end
 
 function LOUDSTrie:first_child(x)
@@ -51,19 +62,26 @@ function LOUDSTrie:lookup(key)
 end
 
 function LOUDSTrie:reverse_lookup(index)
+  local cached = self._reverse_cache[index]
+  if cached then
+    return cached
+  end
   if index <= 0 or index >= self.edges_len then
     error("LOUDSTrie: index out of range: " .. index)
   end
   local chars = {}
-  while index > 1 do
-    chars[#chars + 1] = self.edges[index]
-    index = self:parent(index)
+  local idx = index
+  while idx > 1 do
+    chars[#chars + 1] = self.edges[idx]
+    idx = self:parent(idx)
   end
   local result = {}
   for i = #chars, 1, -1 do
     result[#result + 1] = utils.utf8_char(chars[i])
   end
-  return table.concat(result)
+  local s = table.concat(result)
+  self._reverse_cache[index] = s
+  return s
 end
 
 --- Predictive search: returns a coroutine iterator yielding all node indices under the given node.
@@ -79,6 +97,21 @@ function LOUDSTrie:predictive_search(index)
       upper = self.bit_vector:rank(self.bit_vector:select(upper, false) + 1, true) + 1
     end
   end)
+end
+
+--- Non-coroutine predictive search: calls callback(i) for each node index.
+--- Avoids coroutine overhead and enables LuaJIT JIT compilation.
+function LOUDSTrie:predictive_search_each(index, callback)
+  local lower = index
+  local upper = index + 1
+  local bv = self.bit_vector
+  while upper - lower > 0 do
+    for i = lower, upper - 1 do
+      callback(i)
+    end
+    lower = bv:rank(bv:select(lower, false) + 1, true) + 1
+    upper = bv:rank(bv:select(upper, false) + 1, true) + 1
+  end
 end
 
 return LOUDSTrie

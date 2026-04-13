@@ -95,28 +95,65 @@ function M.utf8_iter(s)
   end
 end
 
---- Convert a Unicode code point to a UTF-8 string.
+--- Convert a Unicode code point to a UTF-8 string (cached).
 --- @param cp number
 --- @return string
+local _utf8_cache = {}
 function M.utf8_char(cp)
+  local cached = _utf8_cache[cp]
+  if cached then
+    return cached
+  end
+  local s
   if cp < 0x80 then
-    return string.char(cp)
+    s = string.char(cp)
   elseif cp < 0x800 then
-    return string.char(bit.bor(0xC0, bit.rshift(cp, 6)), bit.bor(0x80, bit.band(cp, 0x3F)))
+    s = string.char(bit.bor(0xC0, bit.rshift(cp, 6)), bit.bor(0x80, bit.band(cp, 0x3F)))
   elseif cp < 0x10000 then
-    return string.char(
+    s = string.char(
       bit.bor(0xE0, bit.rshift(cp, 12)),
       bit.bor(0x80, bit.band(bit.rshift(cp, 6), 0x3F)),
       bit.bor(0x80, bit.band(cp, 0x3F))
     )
   else
-    return string.char(
+    s = string.char(
       bit.bor(0xF0, bit.rshift(cp, 18)),
       bit.bor(0x80, bit.band(bit.rshift(cp, 12), 0x3F)),
       bit.bor(0x80, bit.band(bit.rshift(cp, 6), 0x3F)),
       bit.bor(0x80, bit.band(cp, 0x3F))
     )
   end
+  _utf8_cache[cp] = s
+  return s
+end
+
+--- Decode one UTF-8 codepoint from string s at byte position i.
+--- @param s string
+--- @param i number 1-based byte position
+--- @return number|nil codepoint
+--- @return number next byte position
+function M.decode_utf8_at(s, i)
+  if i > #s then
+    return nil, i
+  end
+  local b = s:byte(i)
+  local cp, len
+  if b < 0x80 then
+    cp, len = b, 1
+  elseif b < 0xE0 then
+    cp = bit.band(b, 0x1F)
+    len = 2
+  elseif b < 0xF0 then
+    cp = bit.band(b, 0x0F)
+    len = 3
+  else
+    cp = bit.band(b, 0x07)
+    len = 4
+  end
+  for j = 2, len do
+    cp = bit.bor(bit.lshift(cp, 6), bit.band(s:byte(i + j - 1), 0x3F))
+  end
+  return cp, i + len
 end
 
 --- Convert a UTF-8 string to an array of code points (1-based).

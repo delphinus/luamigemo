@@ -58,6 +58,8 @@ function CompactDictionary.new(data)
   end
 
   self.has_mapping = CompactDictionary._create_has_mapping(self.mapping_bv)
+  -- Lazy cache: key_trie node index → list of value strings (or false if no mapping)
+  self._mapping_cache = {}
   return self
 end
 
@@ -140,6 +142,48 @@ function CompactDictionary:predictive_search(key)
       end
     end
   end)
+end
+
+--- Non-coroutine predictive search: calls callback(value_string) for each result.
+--- Avoids double coroutine overhead and enables LuaJIT JIT compilation.
+--- Results per key_trie node are cached for fast incremental search.
+function CompactDictionary:predictive_search_each(key, callback)
+  local key_index = self.key_trie:lookup(key)
+  if key_index > 1 then
+    local cache = self._mapping_cache
+    local has_mapping = self.has_mapping
+    local mapping_bv = self.mapping_bv
+    local mapping = self.mapping
+    local value_trie = self.value_trie
+    self.key_trie:predictive_search_each(key_index, function(i)
+      local cached = cache[i]
+      if cached then
+        -- Cache hit: replay cached results
+        for _, v in ipairs(cached) do
+          callback(v)
+        end
+      elseif cached == nil then
+        -- Not yet cached: compute and cache
+        if has_mapping:get(i) then
+          local vs = mapping_bv:select(i, false)
+          local ve = mapping_bv:next_clear_bit(vs + 1)
+          local size = ve - vs - 1
+          local off = mapping_bv:rank(vs, false)
+          local values = {}
+          for j = 0, size - 1 do
+            values[#values + 1] = value_trie:reverse_lookup(mapping[vs - off + j])
+          end
+          cache[i] = values
+          for _, v in ipairs(values) do
+            callback(v)
+          end
+        else
+          cache[i] = false -- No mapping, cache the negative result
+        end
+      end
+      -- cached == false: no mapping for this node, skip
+    end)
+  end
 end
 
 return CompactDictionary
