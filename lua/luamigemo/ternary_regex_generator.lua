@@ -1,11 +1,15 @@
 local BitList = require "luamigemo.bit_list"
+local nfd = require "luamigemo.nfd"
 local utils = require "luamigemo.utils"
 
 local TernaryRegexGenerator = {}
 TernaryRegexGenerator.__index = TernaryRegexGenerator
 
 --- @param rxop table {or, begin_group, end_group, begin_class, end_class, newline, escape}
-function TernaryRegexGenerator.new(rxop)
+--- @param nfd_tolerant boolean|nil when true, each :add(w) also inserts the
+---   canonical NFD form of w so the generated regex matches both NFC and NFD
+---   text. Default false; the default-off path is unchanged from prior versions.
+function TernaryRegexGenerator.new(rxop, nfd_tolerant)
   local self = setmetatable({}, TernaryRegexGenerator)
   self.or_op = rxop[1]
   self.begin_group = rxop[2]
@@ -15,6 +19,7 @@ function TernaryRegexGenerator.new(rxop)
   self.newline = rxop[6]
   self.escape_chars = TernaryRegexGenerator._init_escape(rxop[7])
   self.root = nil
+  self.nfd = nfd_tolerant == true
   return self
 end
 
@@ -176,6 +181,17 @@ function TernaryRegexGenerator:add(word)
     prev_target = target
     node = target.child
     pos = next_pos
+  end
+
+  -- NFD-tolerant path: also insert the canonical NFD form so the same trie
+  -- matches dakuten/handakuten written as base + combining mark. nfd.expand
+  -- is idempotent for already-decomposed input, so the recursive :add(form)
+  -- bails on the second pass via the `form ~= word` guard.
+  if self.nfd then
+    local form = nfd.expand(word)
+    if form ~= word then
+      self:add(form)
+    end
   end
 end
 

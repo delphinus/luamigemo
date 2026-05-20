@@ -1,3 +1,5 @@
+local bit = require "bit"
+
 local CompactDictionary = require "luamigemo.compact_dictionary"
 local RomajiProcessor = require "luamigemo.romaji_processor"
 local TernaryRegexGenerator = require "luamigemo.ternary_regex_generator"
@@ -37,6 +39,16 @@ M.RXOP_VIM = { "\\|", "\\%(", "\\)", "[", "]", "", "\\.[]*~^$" }
 M.RXOP_PCRE = { "|", "(?:", ")", "[", "]", "", "\\.[]{}()*+-?^$|" }
 M.VIM_PREFIX = "\\m"
 
+-- Bit-OR-able query flags. Pass as the optional 3rd arg of query() to opt into
+-- alternative regex generation modes. Default behavior (flags == nil or 0) is
+-- unchanged from prior versions.
+--
+-- FLAG_NFD: emit a regex that matches both the canonical (NFC) and the
+--   canonically decomposed (NFD) form of voiced / semi-voiced kana. Needed
+--   when matching filenames returned by macOS APFS / iCloud Drive, which
+--   yield NFD-decomposed Japanese filenames.
+M.FLAG_NFD = 0x01
+
 local Migemo = {}
 Migemo.__index = Migemo
 
@@ -44,8 +56,11 @@ function Migemo.new()
   local self = setmetatable({}, Migemo)
   self.dict = nil
   self.processor = RomajiProcessor.build()
-  -- Query result cache: rxop table → { word → pattern string }
+  -- Query result caches: rxop table → { word → pattern string }.
+  -- Kept as two parallel caches keyed by NFD flag to keep the default-path
+  -- lookup byte-identical to prior versions.
   self._query_cache = {}
+  self._query_cache_nfd = {}
   return self
 end
 
@@ -55,9 +70,12 @@ end
 
 --- @param word string
 --- @param rxop table|nil rxop format table. Defaults to M.RXOP_PCRE.
-function Migemo:query_a_word(word, rxop)
+--- @param flags number|nil bit-OR of M.FLAG_* constants. Defaults to 0.
+function Migemo:query_a_word(word, rxop, flags)
   rxop = rxop or M.RXOP_PCRE
-  local cache_for_rxop = self._query_cache[rxop]
+  local use_nfd = bit.band(flags or 0, M.FLAG_NFD) ~= 0
+  local root_cache = use_nfd and self._query_cache_nfd or self._query_cache
+  local cache_for_rxop = root_cache[rxop]
   if cache_for_rxop then
     local cached = cache_for_rxop[word]
     if cached then
@@ -65,10 +83,10 @@ function Migemo:query_a_word(word, rxop)
     end
   else
     cache_for_rxop = {}
-    self._query_cache[rxop] = cache_for_rxop
+    root_cache[rxop] = cache_for_rxop
   end
 
-  local generator = TernaryRegexGenerator.new(rxop)
+  local generator = TernaryRegexGenerator.new(rxop, use_nfd)
   generator:add(word)
 
   local lower = word:lower()
@@ -104,14 +122,15 @@ end
 
 --- @param word string
 --- @param rxop table|nil rxop format table. Defaults to M.RXOP_PCRE.
-function Migemo:query(word, rxop)
+--- @param flags number|nil bit-OR of M.FLAG_* constants. Defaults to 0.
+function Migemo:query(word, rxop, flags)
   if word == "" then
     return ""
   end
   local words = Migemo.parse_query(word)
   local parts = {}
   for _, w in ipairs(words) do
-    parts[#parts + 1] = self:query_a_word(w, rxop)
+    parts[#parts + 1] = self:query_a_word(w, rxop, flags)
   end
   return table.concat(parts)
 end
@@ -186,10 +205,11 @@ end
 --- Query using the default singleton instance.
 --- @param word string Input romaji
 --- @param rxop table|nil rxop format table. Defaults to M.RXOP_PCRE.
+--- @param flags number|nil bit-OR of M.FLAG_* constants. Defaults to 0.
 --- @return string regex pattern
-function M.query(word, rxop)
+function M.query(word, rxop, flags)
   local migemo = M.get()
-  return migemo:query(word, rxop)
+  return migemo:query(word, rxop, flags)
 end
 
 --- Return the path to the bundled dictionary, or nil if not found.

@@ -40,6 +40,17 @@ Side-by-side pattern output comparison for specific inputs.
 " Output: /tmp/luamigemo_compare.txt
 ```
 
+### `nfd_bench.lua`
+
+Compares the cold-cache and warm-cache cost of `FLAG_NFD` against the default
+path. Reports per-query timing, regex size delta, and warm-cache lookup time.
+Use the same `bench-migemo` environment as `practical_bench.lua`.
+
+```bash
+NVIM_APPNAME=nvim-dev/bench-migemo nvim --headless +'luafile bench/nfd_bench.lua' +qa
+" Output: /tmp/luamigemo_nfd_bench.txt
+```
+
 ### `find_differences.lua`
 
 Scans a-z and common romaji combinations to find all pattern differences

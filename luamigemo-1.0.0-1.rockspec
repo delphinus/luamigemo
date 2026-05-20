@@ -20,6 +20,12 @@ description = {
 dependencies = {
   "lua >= 5.1",
 }
+test_dependencies = {
+  "busted",
+}
+test = {
+  type = "busted",
+}
 build = {
   type = "builtin",
   modules = {
@@ -31,6 +37,7 @@ build = {
     ["luamigemo.compact_hiragana_string"] = "lua/luamigemo/compact_hiragana_string.lua",
     ["luamigemo.health"] = "lua/luamigemo/health.lua",
     ["luamigemo.louds_trie"] = "lua/luamigemo/louds_trie.lua",
+    ["luamigemo.nfd"] = "lua/luamigemo/nfd.lua",
     ["luamigemo.romaji_processor"] = "lua/luamigemo/romaji_processor.lua",
     ["luamigemo.ternary_regex_generator"] = "lua/luamigemo/ternary_regex_generator.lua",
     ["luamigemo.utils"] = "lua/luamigemo/utils.lua",
