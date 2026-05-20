@@ -37,6 +37,25 @@ local migemo = require "luamigemo"
 local pattern = migemo.query("tokyo", migemo.RXOP_VIM)
 ```
 
+### Query flags
+
+`query()` accepts an optional bit-OR-ed flag number as a third argument.
+
+| Flag | Description |
+|---|---|
+| `FLAG_NFD` | Emit a regex that matches both NFC (composed) and NFD (decomposed) forms of voiced / semi-voiced kana. Needed when matching filenames returned by macOS APFS / iCloud Drive, which yield NFD-decomposed Japanese filenames. |
+
+```lua
+local migemo = require "luamigemo"
+
+-- Match both NFC "サブ" and NFD "サ + フ + ◌゙" with the same regex
+local pattern = migemo.query("sabu", migemo.RXOP_VIM, migemo.FLAG_NFD)
+```
+
+The default path (no flag, or `flags == 0`) is byte-identical to prior
+versions. Internal caches are kept separate per flag value, so toggling
+the flag at runtime does not invalidate already-warmed entries.
+
 ### Custom dictionary
 
 You can use a different dictionary by passing a path to `migemo.get()`:
@@ -74,6 +93,7 @@ LuaJIT environment.
 | `luamigemo` | Main API with singleton management |
 | `luamigemo.compact_dictionary` | Binary dictionary reader (jsmigemo format) |
 | `luamigemo.louds_trie` | LOUDS-encoded trie |
+| `luamigemo.nfd` | Canonical NFD decomposition table for kana |
 | `luamigemo.bit_vector` | Succinct bit vector with rank/select |
 | `luamigemo.romaji_processor` | Romaji to hiragana with predictive conversion |
 | `luamigemo.ternary_regex_generator` | Regex pattern builder |
@@ -112,6 +132,17 @@ The bundled dictionary (`dict/migemo-compact-dict`) is compiled from
 BSD 3-Clause License (see `dict/LICENSE`).
 
 [yet-another-migemo-dict]: https://github.com/oguna/yet-another-migemo-dict
+
+## Tests
+
+Specs live under `spec/` and use [busted][]. To run them locally:
+
+```bash
+luarocks --local install busted
+~/.luarocks/bin/busted
+```
+
+[busted]: https://lunarmodules.github.io/busted/
 
 ## Release
 

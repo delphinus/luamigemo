@@ -35,6 +35,25 @@ local migemo = require "luamigemo"
 local pattern = migemo.query("tokyo", migemo.RXOP_VIM)
 ```
 
+### クエリフラグ
+
+`query()` は第 3 引数としてビット OR 可能なフラグ番号を任意で受け取ります。
+
+| フラグ | 説明 |
+|---|---|
+| `FLAG_NFD` | 仮名濁音/半濁音について、NFC (合成形式) と NFD (分解形式) の双方にマッチする正規表現を生成します。macOS APFS / iCloud Drive はファイル名を NFD で返すため、それらをマッチさせる場合に必要です。 |
+
+```lua
+local migemo = require "luamigemo"
+
+-- NFC "サブ" と NFD "サ + フ + ◌゙" のどちらにもマッチする正規表現
+local pattern = migemo.query("sabu", migemo.RXOP_VIM, migemo.FLAG_NFD)
+```
+
+既定パス (フラグなし、または `flags == 0`) はこれまでのバージョンとバイト
+単位で同一です。内部キャッシュはフラグ値ごとに分離されているため、実行中に
+フラグを切り替えても暖まったキャッシュは無効化されません。
+
 ### カスタム辞書
 
 `migemo.get()` にパスを渡すことで別の辞書を使用できます:
@@ -72,6 +91,7 @@ Neovim で `:checkhealth luamigemo` を実行すると、辞書と LuaJIT 環境
 | `luamigemo` | メイン API、シングルトン管理 |
 | `luamigemo.compact_dictionary` | バイナリ辞書リーダー (jsmigemo 形式) |
 | `luamigemo.louds_trie` | LOUDS エンコード trie |
+| `luamigemo.nfd` | 仮名用の NFD 正準分解テーブル |
 | `luamigemo.bit_vector` | rank/select 付き簡潔ビットベクトル |
 | `luamigemo.romaji_processor` | ローマ字→ひらがな変換 (予測変換対応) |
 | `luamigemo.ternary_regex_generator` | 正規表現パターン生成器 |
@@ -110,6 +130,17 @@ jsmigemo によってコンパイルされたものです。BSD 3-Clause License
 提供されています (詳細は `dict/LICENSE` を参照)。
 
 [yet-another-migemo-dict]: https://github.com/oguna/yet-another-migemo-dict
+
+## テスト
+
+spec は `spec/` 配下、[busted][] を使用します。ローカル実行手順:
+
+```bash
+luarocks --local install busted
+~/.luarocks/bin/busted
+```
+
+[busted]: https://lunarmodules.github.io/busted/
 
 ## リリース
 
